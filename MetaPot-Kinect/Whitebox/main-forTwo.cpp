@@ -22,6 +22,9 @@
 
 #define _USE_MATH_DEFINES
 #include <math.h>
+#include <chrono>
+
+using namespace std::chrono;
 
 
 /* FOR FACE RECOGNITION */
@@ -45,7 +48,7 @@ inline void ExtractFaceRotationInDegrees( const Vector4* pQuaternion, int* pPitc
 
 int wind;
 int flag_soc = 0;
-char ip_destination[30] = "131.113.137.49";	/*SET UDP DESTINATION ADDRESS HERE*/
+char ip_destination[30] = "131.113.139.137";	/*SET UDP DESTINATION ADDRESS HERE*/
 
 	bool InitSockets()
 	{
@@ -172,9 +175,9 @@ int _tmain( int argc, _TCHAR* argv[] )
 	UINT subFrameLengthInBytes;
 
 	//ADD COLUMNS TO EACH OUTPUT FILE
-	outputfileAudio <<  "datetime,isSpeaking,volume" << std::endl;
-	outputfileBody << "datetime,isTracking,leftHandX,leftHandY,RightHandX,RightHandY,LeanX,LeanY" << std::endl;
-	outputfileFace << "datetime,isTracking,leftEyeX,leftEyeY,rightEyeX,rightEyeY,NoseX,NoseY,LeftMouthX,LeftMouthY,RightMouthX,RightMouthY,pitch,yaw,roll,Happy,Engaged,WearingGlasses,LeftEyeClosed,RightEyeClosed,MouthOpen,MouthMoved,LookingAway" << std::endl;
+	outputfileAudio << "epochtime,isSpeaking,volume" << std::endl;
+	outputfileBody  << "epochtime,isTracking,leftHandX,leftHandY,RightHandX,RightHandY,LeanX,LeanY" << std::endl;
+	outputfileFace  << "epochtime,isTracking,leftEyeX,leftEyeY,rightEyeX,rightEyeY,NoseX,NoseY,LeftMouthX,LeftMouthY,RightMouthX,RightMouthY,pitch,yaw,roll,Happy,Engaged,WearingGlasses,LeftEyeClosed,RightEyeClosed,MouthOpen,MouthMoved,LookingAway" << std::endl;
 
 
 	// Sensor
@@ -479,11 +482,16 @@ int _tmain( int argc, _TCHAR* argv[] )
 
 						if(SUCCEEDED(hResult)){
 							/* TIMESTAMP */
+							/*
 							time_t now2 = time(NULL);
 							struct tm pnow2;
 							localtime_s(&pnow2, &now2);
 							sprintf_s(time_buff, 50, "%04d-%02d-%02d %02d:%02d:%02d", pnow2.tm_year + 1900, pnow2.tm_mon + 1, pnow2.tm_mday, pnow2.tm_hour, pnow2.tm_min, pnow2.tm_sec);
-							outputfileBody << time_buff << ",";
+							outputfileBody << now2 << "," << time_buff << ",";
+							*/
+							milliseconds ms = duration_cast< milliseconds >(system_clock::now().time_since_epoch());
+							std::chrono::milliseconds::rep ms_count = ms.count();
+							outputfileBody << ms_count << ",";
 
 							//LEFT HAND!
 							HandState leftHandState = HandState::HandState_Unknown;
@@ -626,9 +634,11 @@ int _tmain( int argc, _TCHAR* argv[] )
 						hResult = pFaceResult->GetFacePointsInColorSpace( FacePointType::FacePointType_Count, facePoint );
 						if( SUCCEEDED( hResult ) ){
 							facetrack_check = 1;
+							milliseconds ms = duration_cast< milliseconds >(system_clock::now().time_since_epoch());
+							std::chrono::milliseconds::rep ms_count = ms.count();
 							cv::circle( bufferMat_face, cv::Point( static_cast<int>( facePoint[0].X ), static_cast<int>( facePoint[0].Y ) ), 5, static_cast<cv::Scalar>( color[myIndex] ), -1, CV_AA ); // Eye (Left)
-							if(myIndex == 2) outputfileFace << time_buff << ",A," << static_cast<int>( facePoint[0].X ) << "," << static_cast<int>( facePoint[0].Y );
-							else if(myIndex == 1) outputfileFace << time_buff << ",B," << static_cast<int>( facePoint[0].X ) << "," << static_cast<int>( facePoint[0].Y );
+							if(myIndex == 2) outputfileFace << ms_count << ",A," << static_cast<int>( facePoint[0].X ) << "," << static_cast<int>( facePoint[0].Y );
+							else if(myIndex == 1) outputfileFace << ms_count << ",B," << static_cast<int>( facePoint[0].X ) << "," << static_cast<int>( facePoint[0].Y );
 							cv::circle( bufferMat_face, cv::Point( static_cast<int>( facePoint[1].X ), static_cast<int>( facePoint[1].Y ) ), 5, static_cast<cv::Scalar>( color[myIndex] ), -1, CV_AA ); // Eye (Right)
 							outputfileFace << "," << static_cast<int>( facePoint[1].X ) << "," << static_cast<int>( facePoint[1].Y );
 							cv::circle( bufferMat_face, cv::Point( static_cast<int>( facePoint[2].X ), static_cast<int>( facePoint[2].Y ) ), 5, static_cast<cv::Scalar>( color[myIndex] ), -1, CV_AA ); // Nose
@@ -766,14 +776,18 @@ int _tmain( int argc, _TCHAR* argv[] )
 									//send_UDP(average_energy, 1, 0, 0);
 								}
 
-								if(confidence > 0.3f && renormalized_energy > 0.8){
+								if(confidence > 0.8f && renormalized_energy > 0.8){
 									if(angle * 180.0f / M_PI <- 5){
 										/*timestamp*/
+										/*
 										time_t now3 = time(NULL);
 										struct tm pnow3;
 										localtime_s(&pnow3, &now3);
 										sprintf_s(time_buff, 50, "%04d-%02d-%02d %02d:%02d:%02d", pnow3.tm_year + 1900, pnow3.tm_mon + 1, pnow3.tm_mday, pnow3.tm_hour, pnow3.tm_min, pnow3.tm_sec);
-										outputfileAudio << time_buff << ",";
+										*/
+										milliseconds ms = duration_cast< milliseconds >(system_clock::now().time_since_epoch());
+										std::chrono::milliseconds::rep ms_count = ms.count();
+										outputfileAudio << ms_count << ",";
 
 										volume_flag = 1;
 										std::cout << "A is speaking" << std::endl;
@@ -787,11 +801,15 @@ int _tmain( int argc, _TCHAR* argv[] )
 									}
 									else if(angle * 180.0f / M_PI > 5){
 										/*timestamp*/
+										/*
 										time_t now4 = time(NULL);
 										struct tm pnow4;
 										localtime_s(&pnow4, &now4);
 										sprintf_s(time_buff, 50, "%04d-%02d-%02d %02d:%02d:%02d", pnow4.tm_year + 1900, pnow4.tm_mon + 1, pnow4.tm_mday, pnow4.tm_hour, pnow4.tm_min, pnow4.tm_sec);
-										outputfileAudio << time_buff << ",";
+										*/
+										milliseconds ms = duration_cast< milliseconds >(system_clock::now().time_since_epoch());
+										std::chrono::milliseconds::rep ms_count = ms.count();
+										outputfileAudio << ms_count << ",";
 
 										volume_flag = 2;
 										std::cout << "B is speaking" << std::endl;

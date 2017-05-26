@@ -2,14 +2,31 @@
 #include <Ethernet2.h>
 #include <EthernetUdp2.h>         // UDP library from: bjoern@cs.stanford.edu 12/30/2008
 
-// Enter a MAC address and IP address for your controller below.
-// The IP address will be dependent on your local network:
+/***** NECESSARY VARIABLES BEFORE RUNNIGN PROGRAM *****/
+
+/*  MAC ADDRESS OF ARDUIINO  */
 byte mac[] = {
   0x90, 0xA2, 0xDA, 0x10, 0xAA, 0x74
 };
-//IPAddress ip(127, 0, 0, 1);
-IPAddress ip(131, 113, 137, 49);
+
+/*  IP ADDRESS OF ARDUINO */
+IPAddress ip(131, 113, 139, 137);
 unsigned int localPort = 8888;      // local port to listen on
+
+/*  PULSE SENSOR STUFF  */
+const int PULSE_SENSOR_COUNT = 4;
+int pulsePin[PULSE_SENSOR_COUNT] = {0, 1, 2, 3};         // Pulse Sensor purple wire connected to analog pin 0, 1
+
+/*  PUPIL SENSOR STUFF  */
+const int PUPIL_SENSOR_COUNT = 1;
+
+/*  META POT STUFF  */
+const int led_pin[PULSE_SENSOR_COUNT] = {44, 45, 5, 6};   // Ethernet Shield uses up pins 10, 11, 12, 13 !!
+
+/*  THRESHOLDS  */
+const int TALKINGRATE_THRESH = 25;    // IN PERCENTAGE
+const int NORMAL_PULSE[PULSE_SENSOR_COUNT] = {90, 70, 90, 80};    //NORMAL HEART RATE OF EACH PARTICIPANT
+const int NORMAL_PUPIL[PUPIL_SENSOR_COUNT] = {90};    //NORMAL PUPIL SIZE OF EACH PARTICIPANT
 
 // buffers for receiving and sending data
 char packetBuffer[UDP_TX_PACKET_MAX_SIZE];  //buffer to hold incoming packet,
@@ -19,23 +36,17 @@ char * value;
 static float talkSubTotal_AB = 0, talkSubTotal_CD = 0;
 static float TalkCountA = 0, TalkCountB = 0, TalkCountC = 0, TalkCountD = 0;
 float talkTotal = 0;
-float TalkRate[4] = {0,0,0,0};
-
-const int TALKINGRATE_THRESH = 50;
-
-//  VARIABLES FOR PULSE SENSOR
-const int PULSE_SENSOR_COUNT = 2;
-
-const int NORMAL_PULSE[PULSE_SENSOR_COUNT] = {80, 80};
-const int NORMAL_PUPIL = 90; 
-
-// Ethernet Shield uses up pins 10, 11, 12, 13 !!
-const int led_pin[PULSE_SENSOR_COUNT] = {5, 6};
+int TalkRate[4] = {0,0,0,0};
+static int lastTalker = 10;
+static int currentTalker = 10;
+static int turnTaking = 0;
+static int SuperMarioTime = 0;
+static int SuperMarioFlag = 0;
+static int SuperMarioFlag2 = 0;
 
 // An EthernetUDP instance to let us send and receive packets over UDP
 EthernetUDP Udp;
 
-int pulsePin[PULSE_SENSOR_COUNT] = {0, 1};                 // Pulse Sensor purple wire connected to analog pin 0, 1, 2, 3
 int blinkPin = 13;                // pin to blink led at each beat
 int fadePin = 5;                  // pin to do fancy classy fading blink at each beat
 int fadeRate = 0;                 // used to fade LED on with PWM on fadePin
@@ -52,7 +63,8 @@ static boolean serialVisual = false;   // Set to 'false' by Default.  Re-set to 
 
 void setup() {
 
-  Serial.begin(115200);
+  //Serial.begin(115200);
+  Serial.begin(230400);
   
   // start the Ethernet and UDP:
   Serial.println("Begin Ethernet");
@@ -70,7 +82,9 @@ void setup() {
 }
 
 void loop() {
-       
+
+  SuperMarioFlag = 0;
+  SuperMarioFlag2 = 0;
 
   // if there's UDP data available, read a packet
   int packetSize = Udp.parsePacket();
@@ -93,7 +107,7 @@ void loop() {
     //Serial.println("Contents:");
     //Serial.println(packetBuffer);
 
-    //split packet with comma
+    //split packet with comma and put into each variable
     id = strtok(packetBuffer, ' ');
     int idInt = atoi(id);
     value = strchr(packetBuffer, ',');
@@ -120,44 +134,75 @@ void loop() {
       Serial.println(totalInt);
       */
       if(whoInt == 1){   //A SPOKE
-        Serial.print("TalkA: ");
-        Serial.println(valueFloat);
-        TalkCountA = valueFloat;
-        talkSubTotal_AB = totalInt;
+        //Serial.print("TalkA, ");
+        //Serial.println(valueFloat);
+        //TalkCountA = valueFloat;
+        //talkSubTotal_AB = totalInt;
+        TalkCountA++;
+        talkSubTotal_AB++;
+        lastTalker = currentTalker;
+        currentTalker = whoInt;
       }
       else if(whoInt == 2){   //B SPOKE
-        Serial.print("TalkB: ");
-        Serial.println(valueFloat);
-        TalkCountB = valueFloat;
-        talkSubTotal_AB = totalInt;
+        //Serial.print("TalkB, ");
+        //Serial.println(valueFloat);
+        TalkCountB++;
+        talkSubTotal_AB++;
+        //TalkCountB = valueFloat;
+        //talkSubTotal_AB = totalInt;
+        lastTalker = currentTalker;
+        currentTalker = whoInt;
       }
       else if(whoInt == 3){   //C SPOKE
-        Serial.print("TalkC: ");
-        Serial.println(valueFloat);
-        TalkCountC = valueFloat;
-        talkSubTotal_CD = totalInt;
+        //Serial.print("TalkC, ");
+        //Serial.println(valueFloat);
+        TalkCountC++;
+        talkSubTotal_CD++;
+        //TalkCountC = valueFloat;
+        //talkSubTotal_CD = totalInt;
+        lastTalker = currentTalker;
+        currentTalker = whoInt;
       }
       else if(whoInt == 4){   //D SPOKE
-        Serial.print("TalkD: ");
-        Serial.println(valueFloat);
-        TalkCountD = valueFloat;
-        talkSubTotal_CD = totalInt;
+        //Serial.print("TalkD, ");
+        //Serial.println(valueFloat);
+        TalkCountD++;
+        talkSubTotal_CD++;
+        //TalkCountD = valueFloat;
+        //talkSubTotal_CD = totalInt;
+        lastTalker = currentTalker;
+        currentTalker = whoInt;
       }
       talkTotal = talkSubTotal_AB + talkSubTotal_CD;
-      
+      /*
+      Serial.print(TalkCountA);
+      Serial.print(" ");
+      Serial.print(TalkCountB);
+      Serial.print(" ");
+      Serial.print(TalkCountC);
+      Serial.print(" ");
+      Serial.print(TalkCountD);
+      Serial.print(" ");
+      Serial.print(TalkCountA + TalkCountB + TalkCountC + TalkCountD);
+      Serial.print(" ");
+      Serial.println(talkTotal);
+      */
       if((TalkCountA + TalkCountB + TalkCountC + TalkCountD) == talkTotal){ // CHECK SUM MATCHES TALKTOTAL
         TalkRate[0] = TalkCountA / talkTotal * 100;
         TalkRate[1] = TalkCountB / talkTotal * 100;
         TalkRate[2] = TalkCountC / talkTotal * 100;
         TalkRate[3] = TalkCountD / talkTotal * 100;
         for(int i = 0; i < 4; i++){
-          Serial.print(" TalkRate");
-          Serial.print(i+1);
-          Serial.print(": ");
-          Serial.print(TalkRate[i]);
+          Serial.print("1,");
+          Serial.print(i);
+          Serial.print(",");
+          Serial.println(TalkRate[i]);
+          if(TalkRate[i] > 20 && TalkRate[i] < 30) SuperMarioFlag++;
         }
-        Serial.println("");
       }
+      if(lastTalker != currentTalker) turnTaking++;
+      Serial.print("4,4,");
+      Serial.println(turnTaking);
     }
 
       /****** LEAN Y ******/
@@ -174,17 +219,23 @@ void loop() {
       /****** PUPIL ******/
       
     else if(idInt == 5){
-      if(TalkRate[3] < TALKINGRATE_THRESH){   //activate Pot only when TalkRate is less than close to equal
-        //Serial.print("pupil: ");
-        //Serial.println(valueFloat);
-        float treePupil;
-        if(valueFloat < NORMAL_PUPIL) {treePupil = 0;}
-        else if(valueFloat > (NORMAL_PUPIL + 30)) {treePupil = 30;}
-        else {treePupil = (valueFloat - NORMAL_PUPIL) * 30 / 30;}
-        //analogWrite(led_pin4, treePupil);
-        Serial.print("Pot Pupil:");
-        Serial.println(treePupil);
-      }
+         Serial.print("2,");
+         Serial.print(whoInt-1);
+         Serial.print(",");
+         Serial.println(int(valueFloat));
+         /*
+        if(TalkRate[whoInt - 1] < TALKINGRATE_THRESH){   //activate Pot only when TalkRate is less than close to equal
+          float treePupil;
+          if(valueFloat < NORMAL_PUPIL[whoInt - 1]) {treePupil = 0;}
+          else if(valueFloat > (NORMAL_PUPIL[whoInt - 1] + 30)) {treePupil = 30;}
+          else {treePupil = (valueFloat - NORMAL_PUPIL[whoInt - 1]) * 30 / 30;}
+          analogWrite(led_pin[whoInt - 1], treePupil);
+          Serial.print("20,");
+          Serial.print(whoInt-1);
+          Serial.print(",");
+          Serial.println(treePupil);
+        }
+        */
     }
     
   }//end if(packetsize)
@@ -196,20 +247,23 @@ void loop() {
    if (QS[x] == true){     //  A Heartbeat Was Found
                        // BPM and IBI have been Determined
                        // Quantified Self "QS" true when arduino finds a heartbeat
-     Serial.print("BPM");
-     Serial.print(x+1);
+     Serial.print("3,");
+     Serial.print(x);
      Serial.print(",");              
-     Serial.println(BPM[x]);  // for Unity visualization
+     Serial.println(BPM[x]);
 
      float treePulse[4];
      if(BPM[x] < NORMAL_PULSE[x]) {treePulse[x] = 0;}
-      else if(BPM[x] > (NORMAL_PULSE[x] + 20)) {treePulse[x] = 30;}
-      else {treePulse[x] = (BPM[x] - NORMAL_PULSE[x]) * 30 / 20;}
+     else if(BPM[x] > (NORMAL_PULSE[x] + 20)) {
+      treePulse[x] = 30;
+      SuperMarioFlag2++;  //Flag for counting Super Mario Star Time
+      }
+     else {treePulse[x] = (BPM[x] - NORMAL_PULSE[x]) * 30 / 20;}
       
       if(TalkRate[x] < TALKINGRATE_THRESH){   //Talk Rate is less than close to equal
         analogWrite(led_pin[x], treePulse[x]);
-        Serial.print("Pot Pulse");
-        Serial.print(x+1);
+        Serial.print("30,");
+        Serial.print(x);
         Serial.print(",");
         Serial.println(treePulse[x]);
       }
@@ -221,5 +275,12 @@ void loop() {
     }
 
   }//end for
+
+  if(SuperMarioFlag == 4 && SuperMarioFlag2 == 4){
+    SuperMarioTime++;
+    Serial.print("5,4,");
+    Serial.println(SuperMarioTime);
+  }
+  
 }
 
